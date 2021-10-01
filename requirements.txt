@@ -1,0 +1,7 @@
+requests
+pandas
+matplotlib
+bs4
+numpy
+tqdm
+xldr==1.2.0
