@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.header import Header
 from smtplib import SMTP_SSL
-
+import itertools
 
 def parse_url(codes):
     headers = {
@@ -42,17 +42,19 @@ def parse_url(codes):
 
 def read_file():
     total = []
-
-
     filename = './data/{}/{}/{}'.format(year, month, day)
     file_pathname = os.listdir(filename)
     for f in file_pathname:
         code = f[:-4]
-        df = pd.read_csv('./data/{}/{}/{}/{}'.format(year, month, day,f))
+        df = pd.read_csv('./data/{}/{}/{}/{}'.format(year, month, day, f)).loc[:, ['净值日期', '单位净值']]
 
         name, gsz = parse_url(code)
-        df2 = pd.DataFrame([[today,float(gsz),"NaN","NaN","NaN","NaN"],], columns=['净值日期','单位净值','日增长率','申购状态',"赎回状态","分红送配"])
-        df = df.append(df2, ignore_index=True)
+        try:
+            # 将最新获取的和之前的合并成一个新的dataframe
+            df2 = pd.DataFrame([[str(today), float(gsz)]], columns=['净值日期', '单位净值'])
+            df = df.append(df2, ignore_index=True)
+        except ValueError:
+            df = df
 
         close = df['单位净值']
         days = df['净值日期']
@@ -79,12 +81,16 @@ def read_file():
         list_datetime = []
         count = 0
 
+        list_out2 = []
+        for j, k in itertools.groupby(list_T1, lambda x: x < 0):
+            list_out2.append(list(k))
+
         #对数据开始判断是否是连续值
         while count+1 < len(list_T1):
             temp.append(list_T1[count])
             list_datetime.append(days[count+19])
             #当两个相乘为正的时候，那么就是连续的，一直这样乘下去，直到出现小于0那就是不连续正数或者负数，这样开始打断
-            while list_T1[count] * list_T1[count+1] > 0:
+            while list_T1[count] * list_T1[count+1] >= 0:
                 temp.append(list_T1[count + 1])
                 list_datetime.append(days[count+20])
                 count += 1
@@ -97,7 +103,15 @@ def read_file():
             list_datetime = []
             count += 1
 
+        if len(list_out) != len(list_out2):
+            changdu = len(list_out2) - len(list_out)
+            a = list_out2[-changdu]
+            b = days[-1]
+            list_out.append(a)
+            sum_datetime.append([b])
+
         list_sum = []
+
         for j in range(len(list_out)):
             if sum(list_out[j]) < 0:
                 a = [[list_out[j][0],'卖出',sum_datetime[j][0]]]
@@ -107,18 +121,20 @@ def read_file():
         if not os.path.exists(filename1):
             os.makedirs(filename1)
         for l in list_sum:
+            #print([l[1], l[2], code, name])
             if l[2] == today and l[1] == '卖出':
+                # print([l[1], l[2], code, name])
                 total.append([l[1], l[2], code, name])
-
-                plt.figure(figsize=(9, 6))
-                plt.plot(close[4:], label='Close', color='g')
-                plt.plot(ma5[4:],   label='ma5',   color='r')
-                plt.plot(ma20[19:], label='ma20',  color='b')
-                plt.title(code)
-                plt.grid(True)
-                plt.legend()
-                plt.savefig('./img/{}/{}/{}/{}.jpg'.format(year, month, day, code))
-                # plt.show()
+        plt.rcParams['font.sans-serif'] = ['SimHei']
+        plt.figure(figsize=(9, 6))
+        plt.plot(close[4:], label='Close', color='g')
+        plt.plot(ma5[4:],   label='ma5',   color='r')
+        plt.plot(ma20[19:], label='ma20',  color='b')
+        plt.title('{}-{}'.format(code,name))
+        plt.grid(True)
+        plt.legend()
+        plt.savefig('./img/{}/{}/{}/{}.jpg'.format(year, month, day, code))
+        # plt.show()
 
     return total
 
@@ -144,9 +160,9 @@ def text_to_html():
 
 def send_mail(receiver):
     host_server = 'smtp.qq.com'  # QQ邮箱的SMTP服务器
-    sender_qq = 'xxxxxxx'  # 发件人的QQ号码
-    pwd = 'xxxxxxxx'  # QQ邮箱的授权码
-    sender_qq_mail = 'xxxxx@qq.com'  # 发件人邮箱地址
+    sender_qq = '960751327'  # 发件人的QQ号码
+    pwd = 'fdrrjmiqqnaubdcj'  # QQ邮箱的授权码
+    sender_qq_mail = '960751327@qq.com'  # 发件人邮箱地址
 
     mail_title = '量化交易之基金卖出'  # 设置邮件标题
 
@@ -167,8 +183,8 @@ def send_mail(receiver):
             <th>买入节点</th>
         </tr>
     <!-- trigger -->
-	</table>
-	<br>'''
+    </table>
+    <br>'''
 
     mail_html = open("table.html", "r", encoding="utf-8").read()
     #添加HTML文本内容
@@ -215,6 +231,9 @@ def send_mail(receiver):
 
 if __name__ == '__main__':
     today = datetime.date.today()
+    threeday = datetime.timedelta(days=3)
+    day3 = today - threeday
+    day3 = str(day3)
     today = str(today)
     year = today.split('-')[0]
     month = today.split('-')[1]
@@ -225,5 +244,5 @@ if __name__ == '__main__':
     try:
         receiver = sys.argv[1]
     except:
-        receiver = 'xxxxxxxxxxxxxx'  # 收件人邮箱地址
+        receiver = 'Felix_Zeng@macroview.com'  # 收件人邮箱地址
     send_mail(receiver)  # 调用函数，发送邮件

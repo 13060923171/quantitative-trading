@@ -76,6 +76,7 @@ def data():
     with open('所持基金.txt','r',encoding='utf-8')as f:
         content = f.readlines()
     list_code = [str(c).replace('\n', '') for c in content]
+
     now = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     over_the_past_year = str(int(now[0:4]) - 1) + now[4:]
 

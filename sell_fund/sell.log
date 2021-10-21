@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/usr/local/Task_jobs/demo/sell_fund/sell_funds.py", line 232, in <module>
+    send_mail(receiver)  # 调用函数，发送邮件
+  File "/usr/local/Task_jobs/demo/sell_fund/sell_funds.py", line 177, in send_mail
+    mail_html = mail_html.replace('<!-- trigger -->', text_to_html())
+  File "/usr/local/Task_jobs/demo/sell_fund/sell_funds.py", line 127, in text_to_html
+    list_sum = read_file()
+  File "/usr/local/Task_jobs/demo/sell_fund/sell_funds.py", line 53, in read_file
+    name, gsz = parse_url(code)
+TypeError: 'NoneType' object is not iterable

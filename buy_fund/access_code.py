@@ -74,7 +74,7 @@ if __name__ == '__main__':
     #获取一年前的今天
     over_the_past_year = str(int(now[0:4]) - 1) + now[4:]
     #获取10页基金列表
-    for i in tqdm(range(1,10)):
+    for i in tqdm(range(1,11)):
         get_status(now,over_the_past_year,i)
     #保存获取到的基金代码并且写入TXT文本中
     write_code(list_code)
