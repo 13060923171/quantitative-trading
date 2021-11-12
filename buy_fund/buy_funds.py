@@ -26,7 +26,7 @@ def parse_url(codes):
     }
     url = "https://api.fund.eastmoney.com/favor/GetFundsInfo?"
     requests.packages.urllib3.disable_warnings()
-    html = requests.post(url,headers=headers,data=data,verify=False)
+    html = requests.post(url,headers=headers,data=data,verify=False,timeout=(3,7))
     if html.status_code == 200:
         #对获取到的内容进行定位
         content = html.json()
@@ -85,63 +85,60 @@ def read_file():
 
         list_out = []
         sum_datetime = []
-        temp = []
         list_datetime = []
-        count = 0
         list_out2 = []
-        for j,k in itertools.groupby(list_T1,lambda x: x < 0):
-            list_out2.append(list(k))
 
-        #对数据开始判断是否是连续值
-        while count+1 < len(list_T1):
-            temp.append(list_T1[count])
-            list_datetime.append(days[count+19])
-            #当两个相乘为正的时候，那么就是连续的，一直这样乘下去，直到出现小于0那就是不连续正数或者负数，这样开始打断
-            while list_T1[count] * list_T1[count+1] >= 0:
-                temp.append(list_T1[count + 1])
-                list_datetime.append(days[count+20])
-                count += 1
-                if count+1 == len(list_T1):
-                    break
-            list_out.append(temp)
+        total_list = []
+        for j,k in zip(list_T1,days[19:]):
+            total_list.append((j,k))
+
+        # #对list_T1进行处理正的和负的完全分开，因为用while最新的正的或者负的无法分开
+        for key,group in itertools.groupby(total_list, lambda x: float(x[0]) > 0 or float(x[0]) == 0):
+            for g in list(group):
+                list_out.append(g[0])
+                list_datetime.append(g[1])
+            list_out2.append(list_out)
             sum_datetime.append(list_datetime)
-            #把该列表清空
-            temp = []
+            list_out = []
             list_datetime = []
-            count += 1
 
-        if len(list_out) != len(list_out2):
-            changdu = len(list_out2) - len(list_out)
-            a = list_out2[-changdu]
-            b = days[-1]
-            list_out.append(a)
-            sum_datetime.append([b])
+    #     #对数据开始判断是否是连续值
+    #     while count+1 < len(list_T1):
+    #         temp.append(list_T1[count])
+    #         list_datetime.append(days[count+19])
+    #         #当两个相乘为正的时候，那么就是连续的，一直这样乘下去，直到出现小于0那就是不连续正数或者负数，这样开始打断
+    #         while list_T1[count] * list_T1[count+1] > 0:
+    #             temp.append(list_T1[count + 1])
+    #             list_datetime.append(days[count+20])
+    #             count += 1
+    #             if count+1 == len(list_T1):
+    #                 break
+    #         list_out.append(temp)
+    #         sum_datetime.append(list_datetime)
+    #         #把该列表清空
+    #         temp = []
+    #         list_datetime = []
+    #         count += 1
 
         list_sum = []
-
-        for j in range(len(list_out)):
-
-            #如果该段落的和小于0，说明蓝线在上，红线在下，符合我们的判断继续下一步
-            if sum(list_out[j]) < 0:
-                #如果该段落的最后一段总和大于零，说明这时候蓝线在下，红线在上，是最后一段
-                if sum(list_out[-1]) > 0:
-                    #蓝线的头为卖出，蓝线的尾为买入
-                    a = [[list_out[j][0], '卖出', sum_datetime[j][0]], [list_out[j][-1], '买入', sum_datetime[j][-1]]]
-                    list_sum.append(a[0])
-                    list_sum.append(a[1])
-                #否则，该蓝线在上，但没有交叉点，所以无法判断最后买入的时间，只能给出最后卖出的时间
-                else:
-                    a = [[list_out[j][0], '卖出', sum_datetime[j][0]]]
-                    list_sum.append(a[0])
-
+        for j in range(len(list_out2)):
+            #如果该段落的最后一段总和大于零，说明这时候蓝线在下，红线在上，是最后一段
+            if sum(list_out2[-1]) > 0:
+                #蓝线的头为卖出，蓝线的尾为买入
+                a = [[list_out2[j][0], '买入', sum_datetime[j][0]]]
+                list_sum.append(a[0])
+            #否则，该蓝线在上，但没有交叉点，所以无法判断最后买入的时间，只能给出最后卖出的时间
+            else:
+                a = [[list_out2[j][0], '卖出', sum_datetime[j][0]]]
+                list_sum.append(a[0])
         filename1 = './img/{}/{}/{}'.format(year, month, day)
         if not os.path.exists(filename1):
             os.makedirs(filename1)
 
         for l in list_sum:
+            # print([l[1], l[2], code, name])
             #然后时间是今天，并且状态是买入，那么符合我们的判断条件
-            if l[2] == today and l[1] == '买入':
-                # print([l[1], l[2], code, name])
+            if yesterday <= l[2] <= today and l[1] == '买入':
                 #把该时间，状态值，代码和名称传入列表用于后面发送邮箱
                 total.append([l[1], l[2], code, name])
                 #并且开始做图，画出最新的图形状态，根据图来做出判断
@@ -253,9 +250,9 @@ def send_mail(receiver):
 
 if __name__ == '__main__':
     today = datetime.date.today()
-    threeday = datetime.timedelta(days=3)
-    day3 = today - threeday
-    day3 = str(day3)
+    yesterday = datetime.timedelta(days=1)
+    yesterday = today - yesterday
+    yesterday = str(yesterday)
     today = str(today)
     year = today.split('-')[0]
     month = today.split('-')[1]

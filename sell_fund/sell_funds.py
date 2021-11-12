@@ -9,7 +9,7 @@ from email.mime.image import MIMEImage
 from email.header import Header
 from smtplib import SMTP_SSL
 import itertools
-
+from tqdm import tqdm
 def parse_url(codes):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
@@ -44,7 +44,7 @@ def read_file():
     total = []
     filename = './data/{}/{}/{}'.format(year, month, day)
     file_pathname = os.listdir(filename)
-    for f in file_pathname:
+    for f in tqdm(file_pathname):
         code = f[:-4]
         df = pd.read_csv('./data/{}/{}/{}/{}'.format(year, month, day, f)).loc[:, ['净值日期', '单位净值']]
 
@@ -77,53 +77,65 @@ def read_file():
 
         list_out = []
         sum_datetime = []
-        temp = []
         list_datetime = []
-        count = 0
-
         list_out2 = []
-        for j, k in itertools.groupby(list_T1, lambda x: x < 0):
-            list_out2.append(list(k))
 
-        #对数据开始判断是否是连续值
-        while count+1 < len(list_T1):
-            temp.append(list_T1[count])
-            list_datetime.append(days[count+19])
-            #当两个相乘为正的时候，那么就是连续的，一直这样乘下去，直到出现小于0那就是不连续正数或者负数，这样开始打断
-            while list_T1[count] * list_T1[count+1] >= 0:
-                temp.append(list_T1[count + 1])
-                list_datetime.append(days[count+20])
-                count += 1
-                if count+1 == len(list_T1):
-                    break
-            list_out.append(temp)
+        total_list = []
+        for j,k in zip(list_T1,days[19:]):
+            total_list.append((j,k))
+
+        # #对list_T1进行处理正的和负的完全分开，因为用while最新的正的或者负的无法分开
+        for key,group in itertools.groupby(total_list, lambda x: float(x[0]) > 0 or float(x[0]) == 0):
+            for g in list(group):
+                list_out.append(g[0])
+                list_datetime.append(g[1])
+            list_out2.append(list_out)
             sum_datetime.append(list_datetime)
-            #把该列表清空
-            temp = []
+            list_out = []
             list_datetime = []
-            count += 1
 
-        if len(list_out) != len(list_out2):
-            changdu = len(list_out2) - len(list_out)
-            a = list_out2[-changdu]
-            b = days[-1]
-            list_out.append(a)
-            sum_datetime.append([b])
+        # list_out = []
+        # sum_datetime = []
+        # temp = []
+        # list_datetime = []
+        # count = 0
+        #
+        # list_out2 = []
+        # for j, k in itertools.groupby(list_T1, lambda x: x < 0):
+        #     list_out2.append(list(k))
+        #
+        # #对数据开始判断是否是连续值
+        # while count+1 < len(list_T1):
+        #     temp.append(list_T1[count])
+        #     list_datetime.append(days[count+19])
+        #     #当两个相乘为正的时候，那么就是连续的，一直这样乘下去，直到出现小于0那就是不连续正数或者负数，这样开始打断
+        #     while list_T1[count] * list_T1[count+1] >= 0:
+        #         temp.append(list_T1[count + 1])
+        #         list_datetime.append(days[count+20])
+        #         count += 1
+        #         if count+1 == len(list_T1):
+        #             break
+        #     list_out.append(temp)
+        #     sum_datetime.append(list_datetime)
+        #     #把该列表清空
+        #     temp = []
+        #     list_datetime = []
+        #     count += 1
+        #
 
         list_sum = []
 
-        for j in range(len(list_out)):
-            if sum(list_out[j]) < 0:
-                a = [[list_out[j][0],'卖出',sum_datetime[j][0]]]
+        for j in range(len(list_out2)):
+            if sum(list_out2[j]) < 0:
+                a = [[list_out2[j][0],'卖出',sum_datetime[j][0]]]
                 list_sum.append(a[0])
 
         filename1 = './img/{}/{}/{}'.format(year, month, day)
         if not os.path.exists(filename1):
             os.makedirs(filename1)
         for l in list_sum:
-            #print([l[1], l[2], code, name])
-            if l[2] == today and l[1] == '卖出':
-                # print([l[1], l[2], code, name])
+            # print([l[1], l[2], code, name])
+            if yesterday <= l[2] <= today and l[1] == '卖出':
                 total.append([l[1], l[2], code, name])
         plt.rcParams['font.sans-serif'] = ['SimHei']
         plt.figure(figsize=(9, 6))
@@ -231,9 +243,9 @@ def send_mail(receiver):
 
 if __name__ == '__main__':
     today = datetime.date.today()
-    threeday = datetime.timedelta(days=3)
-    day3 = today - threeday
-    day3 = str(day3)
+    yesterday = datetime.timedelta(days=1)
+    yesterday = today - yesterday
+    yesterday = str(yesterday)
     today = str(today)
     year = today.split('-')[0]
     month = today.split('-')[1]
