@@ -138,7 +138,7 @@ def read_file():
         for l in list_sum:
             # print([l[1], l[2], code, name])
             #然后时间是今天，并且状态是买入，那么符合我们的判断条件
-            if yesterday <= l[2] <= today and l[1] == '买入':
+            if l[2] == today and l[1] == '买入':
                 #把该时间，状态值，代码和名称传入列表用于后面发送邮箱
                 total.append([l[1], l[2], code, name])
                 #并且开始做图，画出最新的图形状态，根据图来做出判断
@@ -264,4 +264,7 @@ if __name__ == '__main__':
         receiver = sys.argv[1]
     except:
         receiver = 'Felix_Zeng@macroview.com'  # 收件人邮箱地址
-    send_mail(receiver)  # 调用函数，发送邮件
+    try:
+        send_mail(receiver)  # 调用函数，发送邮件
+    except:
+        send_mail(receiver)  # 调用函数，发送邮件

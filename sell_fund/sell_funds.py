@@ -10,6 +10,7 @@ from email.header import Header
 from smtplib import SMTP_SSL
 import itertools
 from tqdm import tqdm
+
 def parse_url(codes):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36",
@@ -94,35 +95,6 @@ def read_file():
             list_out = []
             list_datetime = []
 
-        # list_out = []
-        # sum_datetime = []
-        # temp = []
-        # list_datetime = []
-        # count = 0
-        #
-        # list_out2 = []
-        # for j, k in itertools.groupby(list_T1, lambda x: x < 0):
-        #     list_out2.append(list(k))
-        #
-        # #对数据开始判断是否是连续值
-        # while count+1 < len(list_T1):
-        #     temp.append(list_T1[count])
-        #     list_datetime.append(days[count+19])
-        #     #当两个相乘为正的时候，那么就是连续的，一直这样乘下去，直到出现小于0那就是不连续正数或者负数，这样开始打断
-        #     while list_T1[count] * list_T1[count+1] >= 0:
-        #         temp.append(list_T1[count + 1])
-        #         list_datetime.append(days[count+20])
-        #         count += 1
-        #         if count+1 == len(list_T1):
-        #             break
-        #     list_out.append(temp)
-        #     sum_datetime.append(list_datetime)
-        #     #把该列表清空
-        #     temp = []
-        #     list_datetime = []
-        #     count += 1
-        #
-
         list_sum = []
 
         for j in range(len(list_out2)):
@@ -135,7 +107,7 @@ def read_file():
             os.makedirs(filename1)
         for l in list_sum:
             # print([l[1], l[2], code, name])
-            if yesterday <= l[2] <= today and l[1] == '卖出':
+            if l[2] == today and l[1] == '卖出':
                 total.append([l[1], l[2], code, name])
         plt.rcParams['font.sans-serif'] = ['SimHei']
         plt.figure(figsize=(9, 6))
@@ -149,6 +121,55 @@ def read_file():
         # plt.show()
 
     return total
+
+#计算总基金持有收益
+def get_data():
+    list_name = []
+    list_gsz = []
+    #获取基金代码
+    with open('所持基金.txt','r',encoding='utf-8')as f:
+        content = f.readlines()
+    list_code = [str(c).replace('\n', '') for c in content]
+    #筛选属于自己的代码
+    for c in list_code[:-3]:
+        name, gsz = parse_url(c)
+        list_name.append(name)
+        list_gsz.append(gsz)
+    #计算收益率
+    def jisuan(g,c):
+        syl = "%0.2lf" % (float(float(float(g) - float(c)) / float(c)) * 100)
+        return syl
+    list_sum = []
+                #中欧   天弘医药  天弘饮料 前海   金鹰     汇丰     招商
+    list_cbj = [3.6924, 1.1417, 3.4131, 2.4671, 4.3037, 5.0901, 1.6586]
+    for i in range(len(list_cbj)):
+        n = list_name[i]
+        g = list_gsz[i]
+        c = list_cbj[i]
+        syl = jisuan(g,c)
+        # syl = "%0.2lf" %(float(float(float(g) - float(c)) / float(c)) * 100)
+        if float(syl) >= 8:
+            neirong = '收益率大于8,请速抛！！！'
+            list_sum.append([n,syl,neirong])
+        else:
+            neirong = ''
+            list_sum.append([n, syl, neirong])
+
+
+    if len(list_sum) > 0:
+        #把列表写成HTML语句用于后面发送邮件
+        trigger_html_str = ''
+        for l in list_sum:
+            tail_html_str = '''<tr>
+                            <td>{}</td>
+                            <td>{}</td>
+                            <td>{}</td>             
+                            </tr>'''.format(l[0], l[1], l[2])
+            trigger_html_str = trigger_html_str + tail_html_str
+        return trigger_html_str
+    else:
+        trigger_html_str = ''
+        return trigger_html_str
 
 
 def text_to_html():
@@ -196,14 +217,26 @@ def send_mail(receiver):
         </tr>
     <!-- trigger -->
     </table>
-    <br>'''
+    <br>
+    <table width="90%" border="1" cellspacing="0" cellpadding="4"  class="tabtop13">
+                <tr>
+                <th bgcolor="#6633FF" colspan="3" class="btbg titfont" style="color:#fff; font-weight: bold; ">量化交易之基金收益率
+                </tr>
+                <tr class="btbg titfont">
+                    <th style='background:#F39C12'>基金名称</th>
+                    <th style='background:#F39C12'>持有收益</th>
+                    <th style='background:#F39C12'>重要告警</th>
+                </tr>
+            <!-- host -->
+        </table>
+        <br>'''
 
     mail_html = open("table.html", "r", encoding="utf-8").read()
     #添加HTML文本内容
     mail_html = mail_html.replace('<!-- imgstart -->', table_html_code)
     #在里面添加表格形式，以表格的形式发送出来
     mail_html = mail_html.replace('<!-- trigger -->', text_to_html())
-
+    mail_html = mail_html.replace('<!-- host -->', get_data())
     filename1 = './img/{}/{}/{}'.format(year, month, day)
     file_pathname = os.listdir(filename1)
     if len(file_pathname) > 0:
@@ -257,4 +290,7 @@ if __name__ == '__main__':
         receiver = sys.argv[1]
     except:
         receiver = 'Felix_Zeng@macroview.com'  # 收件人邮箱地址
-    send_mail(receiver)  # 调用函数，发送邮件
+    try:
+        send_mail(receiver)  # 调用函数，发送邮件
+    except:
+        send_mail(receiver)  # 调用函数，发送邮件
