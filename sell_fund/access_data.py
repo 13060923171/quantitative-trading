@@ -90,7 +90,7 @@ def data():
     for l in tqdm(list_code):
         fund = get_fund('{}'.format(l),over_the_past_year,now)
         fund.to_csv('./data/{}/{}/{}/{}.csv'.format(year,month,day,l))
-
+    time.sleep(0.5)
 
 
 if __name__ == '__main__':

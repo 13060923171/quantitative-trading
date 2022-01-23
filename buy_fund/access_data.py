@@ -109,7 +109,7 @@ def data():
         fund = get_fund('{}'.format(l),over_the_past_year,now)
         #然后再把获取到的数据用CSV保存下来，格式默认为utf-8
         fund.to_csv('./data/{}/{}/{}/{}.csv'.format(year,month,day,l))
-
+    time.sleep(0.5)
 
 
 if __name__ == '__main__':
