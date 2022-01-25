@@ -242,10 +242,10 @@ def text_to_html():
 
 def send_mail(receiver):
     #这一块是发件人要填写的内容
-    host_server = 'smtp.qq.com'  # QQ邮箱的SMTP服务器
-    sender_qq = '960751327'  # 发件人的QQ号码
-    pwd = 'fdrrjmiqqnaubdcj'  # QQ邮箱的授权码
-    sender_qq_mail = '960751327@qq.com'  # 发件人邮箱地址
+    host_server = 'xxx'  # QQ邮箱的SMTP服务器
+    sender_qq = 'xxx'  # 发件人的QQ号码
+    pwd = 'xxx'  # QQ邮箱的授权码
+    sender_qq_mail = 'xxx'  # 发件人邮箱地址
 
     mail_title = '量化交易之基金买入'  # 设置邮件标题
 
@@ -330,7 +330,7 @@ if __name__ == '__main__':
     try:
         receiver = sys.argv[1]
     except:
-        receiver = 'Felix_Zeng@macroview.com'  # 收件人邮箱地址
+        receiver = 'xxxx'  # 收件人邮箱地址
     try:
         send_mail(receiver)  # 调用函数，发送邮件
         remove_img()
